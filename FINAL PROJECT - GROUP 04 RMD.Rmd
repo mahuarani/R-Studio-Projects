@@ -1,0 +1,200 @@
+```{R}
+#Install necessary packages
+library(readxl)
+install.packages("lmtest")
+library(lmtest)
+library(sandwich)
+install.packages("car")
+library("car")
+install.packages("ggplot2")
+install.packages("stargazer")
+library(ggplot2)
+```
+ 
+```{R} 
+#Import data
+library(readr)
+data <- read_csv("data (1).csv")
+View(data)
+```
+
+```{R} 
+#Run regressions
+#(1) MEDV on CRIM + ZN + INDUS + CHAS + RM + AGE + DIS + RAD + TAX + PTRATIO
+re.lm1 <- lm(MEDV ~ CRIM + ZN + INDUS + CHAS + RM + AGE + DIS + RAD + TAX + PTRATIO , data = data)
+RM <- re.lm1
+coeftest(RM, vcov. = vcovHC, type = "HC1")
+summary(RM)
+plot(RM)
+
+BRM.F <- lm(MEDV~CRIM+ZN+INDUS+CHAS+RM+AGE+DIS+RAD+TAX+PTRATIO,data = data)
+linearHypothesis(BRM.F,c("CRIM=0","ZN=0","INDUS=0","CHAS=0","RM=0","AGE=0","DIS=0","RAD=0","TAX=0","PTRATIO=0"),white.adjust="hc1")
+
+RM.v<-vcov(RM,type="HC1")
+RobustRM<-sqrt(diag(RM.v))
+RobustRM
+
+plot(x = data$CRIM, 
+     y = data$MEDV,
+     main = "Scatterplot: Crime Rate w/ Median value of Homes owned(in 1000's)",
+     xlab = "Crime Rate",
+     ylab = "Median values of Homes")
+
+rbind("lower"=coef(RM)-qnorm(0.975)*RobustRM,"upper"=coef(RM)+qnorm(0.975)*RobustRM)
+
+library(ggplot2)
+ggplot(data, aes(x=data$CRIM, y=data$MEDV)) +
+  geom_point() +
+  geom_smooth(method=lm)
+
+ggplot(data, aes(x=data$INDUS, y=data$MEDV)) +
+  geom_point() +
+  geom_smooth(method=lm)
+
+ggplot(data, aes(x=data$RM, y=data$MEDV)) +
+  geom_point() +
+  geom_smooth(method=lm)
+
+ggplot(data, aes(x=data$DIS, y=data$MEDV)) +
+  geom_point() +
+  geom_smooth(method=lm)
+
+ggplot(data, aes(x=data$RAD, y=data$MEDV)) +
+  geom_point() +
+  geom_smooth(method=lm)
+
+ggplot(data, aes(x=data$TAX, y=data$MEDV)) +
+  geom_point() +
+  geom_smooth(method=lm, level=0.90)
+```
+
+```{R} 
+#Correlation coefficient
+cor(data$MEDV,data$CRIM)
+cor(data$MEDV,data$INDUS)
+cor(data$MEDV,data$DIS)
+cor(data$MEDV,data$RAD)
+cor(data$MEDV,data$TAX)
+```
+
+```{R} 
+#Diagnostic plots 
+
+## Run a regression analysis for MEDV + CRIM 
+fit = lm(MEDV ~ CRIM, data) 
+plot(fit)
+par(mfrow=c(2,2)) 
+plot(fit)
+
+## Run a regression analysis for MEDV + ZN
+fit = lm(MEDV ~ ZN, data) 
+plot(fit)
+par(mfrow=c(2,2)) 
+plot(fit)
+
+## Run a regression analysis for MEDV + INDUS
+fit = lm(MEDV ~ INDUS, data) 
+plot(fit)
+par(mfrow=c(2,2)) 
+plot(fit)
+
+## Run a regression analysis for MEDV + RM
+fit = lm(MEDV ~ RM, data) 
+plot(fit)
+par(mfrow=c(2,2)) 
+plot(fit)
+
+## Run a regression analysis for MEDV + AGE
+fit = lm(MEDV ~ AGE, data) 
+plot(fit)
+par(mfrow=c(2,2)) 
+plot(fit)
+
+## Run a regression analysis for MEDV + DIS
+fit = lm(MEDV ~ DIS, data) 
+plot(fit)
+par(mfrow=c(2,2)) 
+plot(fit)
+
+## Run a regression analysis for MEDV + RAD
+fit = lm(MEDV ~ RAD, data) 
+plot(fit)
+par(mfrow=c(2,2)) 
+plot(fit)
+
+## Run a regression analysis for MEDV + TAX
+fit = lm(MEDV ~ TAX, data) 
+plot(fit)
+par(mfrow=c(2,2)) 
+plot(fit)
+
+## Run a regression analysis for MEDV + PTRATIO
+fit = lm(MEDV ~ PTRATIO, data) 
+plot(fit)
+par(mfrow=c(2,2)) 
+plot(fit)
+
+```
+
+```{R} 
+#correlation 
+cor(data$MEDV,data$CRIM)
+cor(data$MEDV,data$TAX)
+cor(data$MEDV,data$INDUS)
+cor(data$MEDV,data$DIS)
+cor(data$MEDV,data$RAD)
+
+Plot1 <- ggplot(data,aes(x=MEDV, y=CRIM))+geom_point()
+Plot1
+```
+
+
+```{R} 
+#Stargazer
+library(stargazer)
+
+stargazer(RM,
+          type="html",
+          digits = 3,
+          se = RobustRM,
+          dep.var.labels=c("G3"),
+          covariate.labels=c("Crime","Plots over 25k sqft","Non-retail businesses","Charles","No.of Rooms","Units built prior 1940"),
+          ci = T,
+          out="model_bostonRS.html")
+```
+
+```{R}
+# generate another table with correct R2 and adj R2
+##estimate all FIVE models using plm().
+m1 <- lm(data ~ CRIM, data = data)
+m2 <- plm(data ~ CRIM + DIS, model = "pool", data = data)
+m3 <- plm(data ~ CRIM + DIS + TAX,
+                       index = c("DIS","TAX"),
+                       model = "pool",
+                       effect = "twoways", 
+                       data = data)
+m4 <- plm(data ~ CRIM + DIS + TAX + INDUS,
+                       index = c("DIS","TAX"),
+                       model = "pool",
+                       effect = "twoways", 
+                       data = data)
+m5 <- plm(data ~ CRIM + DIS + TAX + INDUS + RAD,
+                       index = c("DIS","TAX"),
+                       model = "pool",
+                       effect = "twoways", 
+                       data = data)
+stargazer(m1,m2,m3,m4,m5, 
+          type="html",
+          digits = 3,
+          se = RobustRM,
+          title = "Linear Regression Models of Factors affecting Housing Prices in Boston ",
+          out="model_bostonRS_2.html") 
+
+```
+
+
+
+
+
+
+
